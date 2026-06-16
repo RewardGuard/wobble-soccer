@@ -1,0 +1,21 @@
+# envs
+.venv/
+venv/
+env/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# trained models / logs
+*.zip
+*.pt
+*.pth
+runs/
+logs/
+tensorboard/
+
+# os
+.DS_Store
