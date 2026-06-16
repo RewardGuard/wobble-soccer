@@ -36,12 +36,21 @@ def main():
                     help="total training timesteps (small default = quick proof)")
     ap.add_argument("--envs", type=int, default=4, help="parallel envs")
     ap.add_argument("--out", type=str, default="ppo_wobble", help="model save path")
+    ap.add_argument("--rewardguard", action="store_true",
+                    help="monitor reward components live via rewardguard.dev")
     args = ap.parse_args()
 
     vec = make_vec_env(make_env, n_envs=args.envs)
     model = PPO("MlpPolicy", vec, n_steps=256, batch_size=256, verbose=1)
+
+    callback = None
+    if args.rewardguard:
+        from wobblesoccer.integrations import make_monitor, make_sb3_callback
+        callback = make_sb3_callback(make_monitor(), check_freq=2048)
+        print("RewardGuard monitoring enabled (rewardguard.dev)")
+
     print(f"\nTraining PPO for {args.steps} timesteps on WobbleSoccer...\n")
-    model.learn(total_timesteps=args.steps)
+    model.learn(total_timesteps=args.steps, callback=callback)
     model.save(args.out)
     print(f"\nSaved model -> {args.out}.zip")
 

@@ -9,3 +9,6 @@ screeninfo>=0.8        # Ursina queries monitors on import; install explicitly
 # --- training the example agent (optional: only for examples/train_ppo.py) ---
 stable-baselines3>=2.3
 torch>=2.0
+
+# --- live reward monitoring (optional: rewardguard.dev integration) ---
+rewardguard>=1.0

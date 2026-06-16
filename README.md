@@ -136,11 +136,51 @@ def my_reward(prev, cur, info) -> float:
 env = SoccerEnv(reward_fn=my_reward)
 ```
 
-> **Watch your reward signal.** Shaping terms are easy to over-tune, and agents
-> love to farm shaping instead of scoring. A tool like
-> [rewardguard.dev](https://rewardguard.dev) is handy for monitoring the live
-> reward function and catching reward hacking during training — keep an eye on it
-> whenever you change `reward_fn`.
+### Monitor your reward with RewardGuard (built-in, optional)
+
+Shaping terms are easy to over-tune, and agents love to farm shaping instead of
+scoring. This project has a first-class integration with
+[rewardguard.dev](https://rewardguard.dev) for watching the live reward signal
+and catching reward hacking during training.
+
+It works because every `step()` puts a per-component breakdown in
+`info["reward_components"]` (`goal`, `progress`, `possession`, `engage`). Feeding
+that to a monitor is the whole integration:
+
+```bash
+pip install rewardguard
+```
+
+```python
+from wobblesoccer import SoccerEnv
+from wobblesoccer.integrations import make_monitor, summarize
+
+env = SoccerEnv()
+monitor = make_monitor()                       # expects goals to dominate
+obs, info = env.reset(seed=0)
+for _ in range(10_000):
+    obs, r, term, trunc, info = env.step(env.action_space.sample())
+    monitor.step(info["reward_components"])     # <- that's it
+    if term or trunc:
+        obs, info = env.reset()
+print(summarize(monitor.check()))              # flags shaping that drowns out goals
+```
+
+With Stable-Baselines3, drop in the ready-made callback — or just pass
+`--rewardguard` to the training example:
+
+```python
+from wobblesoccer.integrations import make_monitor, make_sb3_callback
+model.learn(total_timesteps=500_000, callback=make_sb3_callback(make_monitor()))
+```
+
+```bash
+python examples/train_ppo.py --steps 50000 --rewardguard
+```
+
+A custom `reward_fn` can expose its own components too by returning
+`(total, {"component": value, ...})` instead of a plain float — they'll show up
+in `info["reward_components"]` and flow straight to RewardGuard.
 
 ### Copy-pasteable Stable-Baselines3 example
 
@@ -176,6 +216,8 @@ wobble-soccer/
 ├── wobblesoccer/
 │   ├── __init__.py             # exports SoccerEnv; registers Gym ids
 │   ├── env.py                  # gymnasium.Env + the overridable reward
+│   ├── integrations/
+│   │   └── rewardguard.py      # optional rewardguard.dev reward monitoring
 │   ├── core/                   # PURE sim — no rendering, no RL
 │   │   ├── config.py           # all tunable constants
 │   │   ├── state.py            # the copyable State object

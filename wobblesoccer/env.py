@@ -50,23 +50,34 @@ PROGRESS_WEIGHT = 0.01     # reward moving the ball toward the opponent goal (+x
 NEAR_BALL_WEIGHT = 0.0005  # gently encourage the controlled player to engage
 
 
-def default_reward(prev: State, cur: State, info: dict) -> float:
-    """The default, easily-overridable reward (team 0's perspective)."""
-    # --- the objective: goals ---
+def reward_components(prev: State, cur: State, info: dict) -> dict:
+    """Per-step *breakdown* of the default reward (team 0's perspective).
+
+    Returning named pieces instead of one opaque number is what makes the
+    rewardguard.dev integration trivial: each term can be watched separately so
+    you can see if shaping is drowning out the actual goal signal.  The env puts
+    this dict in ``info["reward_components"]`` every step.
+    """
     goals_for = int(cur.score[0] - prev.score[0])
     goals_against = int(cur.score[1] - prev.score[1])
-    reward = GOAL_REWARD * (goals_for - goals_against)
 
-    # --- light shaping (kept far smaller than a goal) ---
-    if cur.possession >= 0 and cur.team[cur.possession] == 0:
-        reward += POSSESSION_BONUS
-    reward += PROGRESS_WEIGHT * float(cur.ball_pos[0] - prev.ball_pos[0])
-
+    possession = POSSESSION_BONUS if (cur.possession >= 0 and
+                                      cur.team[cur.possession] == 0) else 0.0
+    progress = PROGRESS_WEIGHT * float(cur.ball_pos[0] - prev.ball_pos[0])
     ap = cur.active_player
     d = float(np.hypot(cur.player_pos[ap, 0] - cur.ball_pos[0],
                        cur.player_pos[ap, 2] - cur.ball_pos[2]))
-    reward -= NEAR_BALL_WEIGHT * d
-    return reward
+    return {
+        "goal": GOAL_REWARD * (goals_for - goals_against),  # the real objective
+        "possession": possession,                           # shaping
+        "progress": progress,                               # shaping
+        "engage": -NEAR_BALL_WEIGHT * d,                    # shaping
+    }
+
+
+def default_reward(prev: State, cur: State, info: dict) -> float:
+    """The default, easily-overridable reward (team 0's perspective)."""
+    return float(sum(reward_components(prev, cur, info).values()))
 # ==========================================================================
 
 
@@ -117,7 +128,23 @@ class SoccerEnv(gym.Env):
         prev = self.sim.state.copy()
         cur = self.sim.step(action)
         info = self._get_info()
-        reward = float(self.reward_fn(prev, cur, info))
+
+        # Compute reward, and always expose a per-component breakdown in info so
+        # monitors (e.g. rewardguard.dev) can watch each term.  A custom reward_fn
+        # may also return (total, {component: value}) to expose its own breakdown.
+        if self.reward_fn is default_reward:
+            components = reward_components(prev, cur, info)
+            reward = float(sum(components.values()))
+        else:
+            res = self.reward_fn(prev, cur, info)
+            if isinstance(res, tuple):
+                reward = float(res[0])
+                components = {k: float(v) for k, v in res[1].items()}
+            else:
+                reward = float(res)
+                components = {"reward": reward}
+        info["reward_components"] = components
+
         truncated = cur.time_left <= 0.0       # episode ends when the clock runs out
         terminated = False
         if self.render_mode == "human":
