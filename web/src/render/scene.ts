@@ -36,7 +36,7 @@ export class GameScene {
   private reticle = new THREE.Group();
   private camTarget = new THREE.Vector3();
 
-  constructor(container: HTMLElement, kits: Kit[]) {
+  constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -54,15 +54,24 @@ export class GameScene {
     this.buildLights();
     this.buildField();
     this.scene.add(makeStadium());
+    this.scene.add(this.ball.mesh);
+    this.buildReticle();
+    this.resize();
+  }
 
+  /** (Re)build the player models for a new match's two teams. */
+  setTeams(kits: Kit[]) {
+    this.clearPlayers();
     for (const kit of kits) {
       const p = new Player3D(kit);
       this.players.push(p);
       this.scene.add(p.group);
     }
-    this.scene.add(this.ball.mesh);
-    this.buildReticle();
-    this.resize();
+  }
+
+  clearPlayers() {
+    for (const p of this.players) this.scene.remove(p.group);
+    this.players = [];
   }
 
   private buildSky() {

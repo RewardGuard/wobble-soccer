@@ -2,8 +2,11 @@
 import type { State } from "../sim/state";
 
 export class HUD {
+  private root = document.getElementById("hud")!;
   private scoreA = document.getElementById("score-a")!;
   private scoreB = document.getElementById("score-b")!;
+  private badgeA = document.querySelector(".badge.red") as HTMLElement;
+  private badgeB = document.querySelector(".badge.blue") as HTMLElement;
   private clock = document.getElementById("clock")!;
   private center = document.getElementById("center-msg")!;
   private flash = document.getElementById("goal-flash")!;
@@ -42,4 +45,23 @@ export class HUD {
   setPaused(p: boolean) {
     this.pause.classList.toggle("show", p);
   }
+
+  setVisible(v: boolean) {
+    this.root.style.display = v ? "block" : "none";
+  }
+
+  setTeams(codeA: string, colorA: string, codeB: string, colorB: string) {
+    this.badgeA.textContent = codeA;
+    this.badgeA.style.background = colorA;
+    this.badgeA.style.color = ink(colorA);
+    this.badgeB.textContent = codeB;
+    this.badgeB.style.background = colorB;
+    this.badgeB.style.color = ink(colorB);
+  }
+}
+
+function ink(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? "#1a1a1a" : "#ffffff";
 }

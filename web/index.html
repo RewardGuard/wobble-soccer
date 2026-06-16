@@ -3,107 +3,90 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Wobble Soccer</title>
+    <title>Wobble Soccer · World Cup 2026</title>
     <style>
-      :root {
-        --red: #e23b3b;
-        --blue: #3b7be2;
-        --ink: #14241a;
-      }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 100%; height: 100%; overflow: hidden; background: #0c130e; }
-      body {
-        font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        user-select: none;
-      }
+      body { font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; user-select: none; color: #fff; }
       #app { position: fixed; inset: 0; }
       canvas { display: block; }
+      kbd { background: rgba(255,255,255,.18); border-radius: 4px; padding: 1px 6px; font-family: inherit; font-weight: 700; font-size: 12px; }
 
-      /* ---------- HUD ---------- */
-      #hud { position: fixed; inset: 0; pointer-events: none; }
-
-      .scorebar {
-        position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
-        display: flex; align-items: center; gap: 14px;
-        font-weight: 800; color: #fff; letter-spacing: 1px;
-        text-shadow: 0 2px 4px rgba(0,0,0,.45);
-      }
+      /* ---------- in-match HUD ---------- */
+      #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+      .scorebar { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,.45); }
       .team { display: flex; align-items: center; gap: 8px; font-size: 26px; }
-      .badge {
-        width: 40px; height: 40px; border-radius: 10px;
-        display: grid; place-items: center;
-        box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 3px 6px rgba(0,0,0,.35);
-        color: rgba(255,255,255,.92); font-size: 20px;
-      }
-      .badge.red { background: var(--red); }
-      .badge.blue { background: var(--blue); }
+      .badge { width: 44px; height: 40px; border-radius: 10px; display: grid; place-items: center; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25), 0 3px 6px rgba(0,0,0,.35); font-size: 17px; font-weight: 800; }
+      .badge.red { background: #e23b3b; } .badge.blue { background: #3b7be2; }
       .score { font-size: 30px; min-width: 26px; text-align: center; }
-      .clock {
-        font-size: 24px; opacity: .92; margin: 0 6px;
-        font-variant-numeric: tabular-nums;
-      }
-
-      #center-msg {
-        position: absolute; top: 30%; left: 50%; transform: translate(-50%,-50%);
-        color: #fff; font-size: 34px; font-weight: 800; text-align: center;
-        text-shadow: 0 3px 0 rgba(0,0,0,.35), 0 0 22px rgba(0,0,0,.5);
-        transition: opacity .25s ease; letter-spacing: 1px;
-      }
-      #goal-flash {
-        position: absolute; inset: 0; display: grid; place-items: center;
-        color: #fff; font-size: 90px; font-weight: 900; letter-spacing: 4px;
-        text-shadow: 0 6px 0 rgba(0,0,0,.3), 0 0 40px rgba(255,255,255,.4);
-        opacity: 0; transition: opacity .15s ease; transform: scale(1);
-      }
-
-      #minimap {
-        position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-        opacity: .85; filter: drop-shadow(0 3px 6px rgba(0,0,0,.4));
-      }
-
-      #hint {
-        position: absolute; bottom: 16px; left: 16px; color: #fff; opacity: .7;
-        font-size: 13px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,.6);
-      }
-      kbd {
-        background: rgba(255,255,255,.18); border-radius: 4px; padding: 1px 6px;
-        font-family: inherit; font-weight: 700; font-size: 12px;
-      }
-
-      #pause {
-        position: absolute; inset: 0; display: none; place-items: center;
-        background: rgba(8,14,10,.55); backdrop-filter: blur(2px);
-        color: #fff; text-align: center;
-      }
+      .clock { font-size: 24px; opacity: .92; margin: 0 6px; font-variant-numeric: tabular-nums; }
+      #center-msg { position: absolute; top: 30%; left: 50%; transform: translate(-50%,-50%); font-size: 34px; font-weight: 800; text-align: center; text-shadow: 0 3px 0 rgba(0,0,0,.35); transition: opacity .25s; opacity: 0; }
+      #goal-flash { position: absolute; inset: 0; display: grid; place-items: center; font-size: 90px; font-weight: 900; letter-spacing: 4px; opacity: 0; transition: opacity .15s; }
+      #minimap { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); opacity: .85; filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+      #hint { position: absolute; bottom: 16px; left: 16px; opacity: .7; font-size: 13px; line-height: 1.5; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+      #pause { position: absolute; inset: 0; display: none; place-items: center; background: rgba(8,14,10,.55); backdrop-filter: blur(2px); text-align: center; }
       #pause.show { display: grid; }
       #pause h1 { font-size: 40px; margin-bottom: 10px; }
-      #pause p { opacity: .85; font-size: 16px; line-height: 1.8; }
+
+      /* ---------- menu / tournament screens ---------- */
+      #screen { position: fixed; inset: 0; display: none; place-items: center; z-index: 10; padding: 24px;
+        background: radial-gradient(120% 90% at 50% 0%, rgba(20,40,28,.55), rgba(5,10,7,.9)); overflow: auto; }
+      #screen.show { display: grid; }
+      .panel { background: rgba(14,22,16,.92); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; padding: 28px 32px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); max-width: 560px; }
+      .panel.wide { max-width: 1040px; width: 100%; }
+      .panel h1 { font-size: 30px; margin: 10px 0; }
+      .panel h1.good { color: #6be07a; } .panel h1.bad { color: #ff8a8a; }
+      .sub { opacity: .8; margin-bottom: 14px; }
+      .stage { text-transform: uppercase; letter-spacing: 2px; font-size: 13px; opacity: .7; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 8px; max-height: 64vh; overflow: auto; margin-top: 14px; padding: 4px; }
+      .team { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.04); color: #fff; cursor: pointer; font-size: 14px; text-align: left; }
+      .team:hover { background: rgba(255,255,255,.14); transform: translateY(-1px); }
+      .team .tc { font-weight: 800; } .team .tn { flex: 1; opacity: .85; font-size: 12px; } .team .ts { opacity: .55; font-size: 12px; }
+      .chip { display: inline-block; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); flex: none; }
+      .vs { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 16px 0; }
+      .vs .side { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      .vs .side .chip { width: 48px; height: 40px; } .vs .nm { font-size: 13px; opacity: .85; } .vs .x { opacity: .6; font-size: 20px; }
+      .go { margin-top: 8px; padding: 12px 26px; font-size: 18px; font-weight: 800; color: #06210f; background: #5ee06b; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #2faa46; }
+      .go:hover { filter: brightness(1.05); } .go:active { transform: translateY(2px); box-shadow: 0 2px 0 #2faa46; }
+      .hint2 { opacity: .6; margin-top: 8px; font-size: 13px; }
+      .tbl { width: 100%; border-collapse: collapse; margin: 6px 0 12px; }
+      .tbl th, .tbl td { padding: 7px 8px; font-size: 14px; text-align: center; }
+      .tbl th { opacity: .6; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.15); }
+      .tbl td.l, .tbl th.l { text-align: left; } .tbl td.l .chip { width: 16px; height: 16px; margin-right: 6px; vertical-align: middle; }
+      .tbl tr.qual td { background: rgba(94,224,107,.12); } .tbl tr.third td { background: rgba(255,210,80,.10); }
+      .tbl tr.me td { outline: 2px solid #ffe14d; }
+      .ties { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; max-height: 60vh; overflow: auto; }
+      .tie { display: flex; justify-content: center; gap: 10px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,.05); font-size: 15px; }
+      .tie span { opacity: .8; font-variant-numeric: tabular-nums; } .tie i { opacity: .6; font-style: italic; }
+      .tie.me { outline: 2px solid #ffe14d; background: rgba(255,225,77,.08); }
+      .trophy { font-size: 64px; }
+
+      /* ---------- penalty shootout ---------- */
+      #shootout { position: fixed; inset: 0; display: none; z-index: 20; }
+      #shootout-ui { position: fixed; bottom: 7%; left: 50%; transform: translateX(-50%); display: none; z-index: 21;
+        font-size: 22px; font-weight: 800; text-shadow: 0 2px 6px rgba(0,0,0,.6); background: rgba(0,0,0,.35); padding: 8px 18px; border-radius: 10px; }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="hud">
       <div class="scorebar">
-        <div class="team"><span class="badge red">CZ</span><span class="score" id="score-a">0</span></div>
-        <span class="clock" id="clock">3:00</span>
-        <div class="team"><span class="score" id="score-b">0</span><span class="badge blue">EN</span></div>
+        <div class="team"><span class="badge red">--</span><span class="score" id="score-a">0</span></div>
+        <span class="clock" id="clock">2:00</span>
+        <div class="team"><span class="score" id="score-b">0</span><span class="badge blue">--</span></div>
       </div>
-      <div id="center-msg">Press <kbd>E</kbd> to kick off</div>
+      <div id="center-msg"></div>
       <div id="goal-flash">GOAL!</div>
       <canvas id="minimap" width="220" height="132"></canvas>
       <div id="hint">
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp; · &nbsp;
-        <kbd>mouse</kbd> aim &nbsp; · &nbsp; <kbd>Q</kbd> pass &nbsp; · &nbsp;
-        <kbd>E</kbd> shoot &nbsp; · &nbsp; <kbd>Esc</kbd> pause &nbsp; · &nbsp; <kbd>T</kbd> AI demo
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>mouse</kbd> aim ·
+        <kbd>Q</kbd> pass · <kbd>E</kbd> shoot · <kbd>Esc</kbd> pause · <kbd>T</kbd> auto-play
       </div>
-      <div id="pause">
-        <div>
-          <h1>Paused</h1>
-          <p><kbd>Esc</kbd> resume &nbsp;·&nbsp; <kbd>R</kbd> restart match</p>
-        </div>
-      </div>
+      <div id="pause"><div><h1>Paused</h1><p><kbd>Esc</kbd> resume</p></div></div>
     </div>
+    <div id="screen"></div>
+    <canvas id="shootout"></canvas>
+    <div id="shootout-ui"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

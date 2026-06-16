@@ -1,17 +1,17 @@
-# Wobble Soccer ⚽
+# Wobble Soccer ⚽ · World Cup 2026
 
-A fast 2.5D **arcade soccer** game you play in the browser, plus a matching
+A 3D arcade soccer **World Cup** you play in the browser, plus a matching
 **Gymnasium reinforcement-learning environment**. The two share one set of rules,
 so the game a human plays and the environment an agent trains in behave the same.
 
-- 🎮 **Play it** — a Three.js + TypeScript web game: sprite footballers with
-  shadows on a 3D pitch, ball-following camera, radar minimap and a clean HUD, in
-  the spirit of *Super Liquid Soccer*. → **[`web/`](web)**
+- 🎮 **Play it** — a Three.js + TypeScript web game: pick a nation and play its
+  matches in 3D (articulated players, real-time shadows, a packed stadium), with
+  group stage → knockouts → **penalty shootouts** → the final. → **[`web/`](web)**
 - 🤖 **Train on it** — a headless `gymnasium.Env` with standard `Box` spaces and a
   one-line, overridable reward. Trains with stock Stable-Baselines3 PPO. → **[`wobblesoccer/`](wobblesoccer)**
 
 ```
-  WASD move   |   mouse aim   |   Q pass   |   E shoot
+  WASD move   |   mouse aim   |   Q pass   |   E shoot   |   T auto-play
 ```
 
 ---
@@ -24,10 +24,12 @@ npm install
 npm run dev          # open the printed http://localhost:5173 URL
 ```
 
-You control the player ringed in yellow (it auto-switches to whoever's nearest
-the ball). Aim with the mouse — the farther the cursor, the harder the kick.
-**Q** passes, **E** shoots, **Esc** pauses, **T** toggles an AI-vs-AI demo.
-Full details in **[web/README.md](web/README.md)**.
+Pick one of 48 nations, then play your group games and knockout ties in 3D — the
+rest of the tournament is simulated. You control the player ringed in yellow (it
+auto-switches to whoever's nearest the ball); aim with the mouse (farther = harder
+kick), **Q** to pass, **E** to shoot, **Esc** to pause, **T** to let the AI play
+for you. Knockout draws go to a penalty shootout. Full details in
+**[web/README.md](web/README.md)**.
 
 ---
 
@@ -192,10 +194,13 @@ model.save("ppo_wobble")
 
 ```
 wobble-soccer/
-├── web/                        # the playable game (Three.js + TypeScript)
-│   ├── src/sim/                # rules ported from the Python core (parity)
-│   ├── src/render/             # scene, procedural pitch + sprite players
-│   ├── src/ui/                 # HUD + radar minimap
+├── web/                        # the playable World Cup game (Three.js + TS)
+│   ├── src/sim/                # match rules ported from the Python core (parity)
+│   ├── src/render/             # 3D players, stadium, shadows, follow-camera
+│   ├── src/tournament/         # group draw, standings, knockouts, quick-sim
+│   ├── src/data/teams.ts       # the 48 nations
+│   ├── src/ui/                 # HUD, radar minimap, World Cup screens
+│   ├── src/shootout.ts         # interactive penalty shootout
 │   └── README.md               # how to run / build the web game
 ├── requirements.txt
 ├── wobblesoccer/               # the RL side (headless)
