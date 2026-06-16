@@ -88,11 +88,12 @@ class SoccerEnv(gym.Env):
     ----------
     team_size : players per side (5 -> 5-a-side, 7 -> 7-a-side).
     match_seconds : length of an episode in simulated seconds.
-    render_mode : ``"human"`` opens a 3D window; ``None`` is fast and headless.
+    render_mode : kept for the Gym API; the env is headless (the playable 3D
+        game lives in ``web/``).  Only ``None`` is supported.
     reward_fn : override the reward; defaults to :func:`default_reward`.
     """
 
-    metadata = {"render_modes": ["human"], "render_fps": int(round(1.0 / C.DT))}
+    metadata = {"render_modes": [], "render_fps": int(round(1.0 / C.DT))}
 
     def __init__(self,
                  team_size: int = C.TEAM_SIZE,
@@ -100,6 +101,12 @@ class SoccerEnv(gym.Env):
                  render_mode: Optional[str] = None,
                  reward_fn: Optional[Callable[[State, State, dict], float]] = None):
         super().__init__()
+        if render_mode not in (None, "rgb_array"):
+            raise ValueError(
+                "SoccerEnv is a headless RL environment. To *play* the game with "
+                "graphics, run the web app in `web/` (`npm --prefix web run dev`). "
+                f"render_mode={render_mode!r} is not supported here."
+            )
         self.team_size = int(team_size)
         self.match_seconds = float(match_seconds)
         self.render_mode = render_mode
@@ -107,7 +114,6 @@ class SoccerEnv(gym.Env):
 
         self.sim = SoccerSim(team_size=self.team_size,
                              match_seconds=self.match_seconds)
-        self._renderer = None  # lazily created only when rendering
 
         N = self.team_size * 2
         obs_dim = 6 + 4 * N + 2 + N + 4 + 2 + 1
@@ -147,23 +153,14 @@ class SoccerEnv(gym.Env):
 
         truncated = cur.time_left <= 0.0       # episode ends when the clock runs out
         terminated = False
-        if self.render_mode == "human":
-            self.render()
         return self._get_obs(), reward, terminated, truncated, info
 
     def render(self):
-        if self.render_mode != "human":
-            return
-        if self._renderer is None:
-            from .render.view import Renderer  # imported only when actually rendering
-            self._renderer = Renderer(self.team_size)
-        self._renderer.sync(self.sim.state)
-        self._renderer.pump()
+        # The 3D experience lives in the web app (web/); the Python env is headless.
+        return None
 
     def close(self):
-        if self._renderer is not None:
-            self._renderer.close()
-            self._renderer = None
+        pass
 
     # ----------------------------------------------------------- observation
     def _get_obs(self) -> np.ndarray:

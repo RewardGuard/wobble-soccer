@@ -17,5 +17,10 @@ runs/
 logs/
 tensorboard/
 
+# web (node)
+node_modules/
+web/dist/
+*.tsbuildinfo
+
 # os
 .DS_Store

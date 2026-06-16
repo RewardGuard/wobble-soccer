@@ -1,14 +1,14 @@
 # Wobble Soccer ⚽
 
-A fast, floppy, low-poly **3D arcade soccer** game in Python — and the *same code*
-is a clean **Gymnasium reinforcement-learning environment**. One deterministic
-simulation core powers both: grab a keyboard and play, or point a PPO agent at it
-and train. No separate "game version" and "RL version" to drift apart.
+A fast 2.5D **arcade soccer** game you play in the browser, plus a matching
+**Gymnasium reinforcement-learning environment**. The two share one set of rules,
+so the game a human plays and the environment an agent trains in behave the same.
 
-The look is deliberately minimal — flat-shaded primitives, bold colors, blobby
-capsule players with a velocity-driven wobble. Doing a lot with a little, in the
-spirit of the NES era. The feel is loose and physics-y, inspired by *Super Liquid
-Soccer*, *Sensible Soccer* and *Kick Off*.
+- 🎮 **Play it** — a Three.js + TypeScript web game: sprite footballers with
+  shadows on a 3D pitch, ball-following camera, radar minimap and a clean HUD, in
+  the spirit of *Super Liquid Soccer*. → **[`web/`](web)**
+- 🤖 **Train on it** — a headless `gymnasium.Env` with standard `Box` spaces and a
+  one-line, overridable reward. Trains with stock Stable-Baselines3 PPO. → **[`wobblesoccer/`](wobblesoccer)**
 
 ```
   WASD move   |   mouse aim   |   Q pass   |   E shoot
@@ -16,63 +16,43 @@ Soccer*, *Sensible Soccer* and *Kick Off*.
 
 ---
 
-## Why it's built this way
+## Play the game (web)
 
-Rendering and simulation are fully decoupled, in three layers:
+```bash
+cd web
+npm install
+npm run dev          # open the printed http://localhost:5173 URL
+```
 
-1. **`wobblesoccer/core/`** — a pure, deterministic, seedable simulation core
-   (state + physics + rules) with a `step(action) -> state` method and **zero
-   rendering or RL dependencies**. Same seed + same actions ⇒ same game, always.
-2. **`wobblesoccer/render/`** — a 3D view + keyboard/mouse layer (Ursina) for
-   humans. Imported lazily; the core and the env never touch it.
-3. **`wobblesoccer/env.py`** — a Gymnasium `Env` wrapping the core, with a
-   `render_mode` switch: `"human"` (3D window) vs `None` (fast headless training).
+You control the player ringed in yellow (it auto-switches to whoever's nearest
+the ball). Aim with the mouse — the farther the cursor, the harder the kick.
+**Q** passes, **E** shoots, **Esc** pauses, **T** toggles an AI-vs-AI demo.
+Full details in **[web/README.md](web/README.md)**.
 
 ---
 
-## Install
-
-Requires Python 3.9+.
+## The RL environment (Python)
 
 ```bash
-git clone https://github.com/USER/wobble-soccer.git
-cd wobble-soccer
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt           # numpy + gymnasium (+ SB3/torch for training)
+
+python examples/train_ppo.py              # quick PPO proof (~seconds)
+python examples/train_ppo.py --steps 500000 --rewardguard   # a real run, monitored
+python examples/random_agent.py           # headless smoke test
+python examples/custom_reward.py          # plug in your own reward
+python tests/test_core.py                 # determinism + Gym-contract checks
 ```
 
-`numpy` + `gymnasium` are all you need for the core and headless RL. `ursina` +
-`screeninfo` add the 3D window; `stable-baselines3` + `torch` are only for the
-training example.
+### Why it's built this way
 
-## Play (human)
+The rules live in a pure, deterministic, seedable simulation core with **zero
+rendering or RL dependencies** — `step(action) -> state`, same seed + same actions
+⇒ same game, always. Two thin layers sit on top:
 
-```bash
-python play.py                 # 5-a-side, 60-second match
-python play.py --team-size 7   # 7-a-side
-python play.py --seconds 120 --seed 1
-```
-
-You control the **red** player nearest the ball — it auto-switches as play moves.
-Move with **WASD**, aim with the **mouse** (pull the cursor farther from your
-player for a more powerful kick), **Q** to pass, **E** to shoot.
-
-## Train (RL)
-
-```bash
-python examples/train_ppo.py                 # quick proof (~seconds)
-python examples/train_ppo.py --steps 500000  # a real run
-python examples/watch.py --model ppo_wobble  # watch it play in 3D
-```
-
-Other examples:
-
-```bash
-python examples/random_agent.py            # headless smoke test
-python examples/random_agent.py --render   # ...watch the random agent
-python examples/custom_reward.py           # plug in your own reward
-python tests/test_core.py                  # determinism + Gym-contract checks
-```
+- **`wobblesoccer/env.py`** — the Gymnasium `Env` (headless) used for training.
+- **`web/src/sim/`** — a faithful TypeScript port of the core that drives the
+  browser game, so play and training stay in sync.
 
 ---
 
@@ -198,37 +178,39 @@ model.save("ppo_wobble")
 
 ---
 
-## Controls
+## Controls (web game)
 
-| input        | action                                  |
-|--------------|-----------------------------------------|
-| **W A S D**  | move the controlled player              |
-| **mouse**    | aim passes/shots (distance = power)     |
-| **Q**        | pass                                    |
-| **E**        | shoot                                   |
+| input | action |
+|------|--------|
+| **W A S D** | move the controlled player (auto-switches to whoever's nearest the ball) |
+| **mouse** | aim passes/shots — distance from your player = power |
+| **Q** | pass |
+| **E** | shoot (also kicks off / restarts) |
+| **Esc** / **P** | pause &nbsp;·&nbsp; **R** restart &nbsp;·&nbsp; **T** AI demo |
 
 ## Project structure
 
 ```
 wobble-soccer/
-├── play.py                     # one-line human launch
+├── web/                        # the playable game (Three.js + TypeScript)
+│   ├── src/sim/                # rules ported from the Python core (parity)
+│   ├── src/render/             # scene, procedural pitch + sprite players
+│   ├── src/ui/                 # HUD + radar minimap
+│   └── README.md               # how to run / build the web game
 ├── requirements.txt
-├── wobblesoccer/
+├── wobblesoccer/               # the RL side (headless)
 │   ├── __init__.py             # exports SoccerEnv; registers Gym ids
 │   ├── env.py                  # gymnasium.Env + the overridable reward
 │   ├── integrations/
 │   │   └── rewardguard.py      # optional rewardguard.dev reward monitoring
-│   ├── core/                   # PURE sim — no rendering, no RL
-│   │   ├── config.py           # all tunable constants
-│   │   ├── state.py            # the copyable State object
-│   │   ├── action.py           # the shared 6-d action encoding
-│   │   ├── sim.py              # SoccerSim.step(): physics + rules
-│   │   └── ai.py               # scripted teammates & opponents
-│   └── render/
-│       └── view.py             # Ursina 3D view + WASD/mouse input
+│   └── core/                   # PURE sim — no rendering, no RL
+│       ├── config.py           # all tunable constants
+│       ├── state.py            # the copyable State object
+│       ├── action.py           # the shared 6-d action encoding
+│       ├── sim.py              # SoccerSim.step(): physics + rules
+│       └── ai.py               # scripted teammates & opponents
 ├── examples/
-│   ├── train_ppo.py            # tiny PPO training proof
-│   ├── watch.py                # watch a trained model in 3D
+│   ├── train_ppo.py            # tiny PPO training proof (+ --rewardguard)
 │   ├── random_agent.py         # smallest env smoke test
 │   └── custom_reward.py        # reward-override demo
 └── tests/
@@ -237,9 +219,6 @@ wobble-soccer/
 
 ## Requirements
 
-- Python 3.9+
-- `numpy`, `gymnasium` (core + RL)
-- `ursina`, `screeninfo` (3D human play)
-- `stable-baselines3`, `torch` (training example only)
-
-See [`requirements.txt`](requirements.txt).
+- **Play:** Node 18+ (`web/`, installs Three.js + Vite via `npm install`)
+- **Train:** Python 3.9+, `numpy`, `gymnasium` (+ `stable-baselines3`, `torch`,
+  optional `rewardguard` for the training example) — see [`requirements.txt`](requirements.txt)

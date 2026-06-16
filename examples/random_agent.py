@@ -2,9 +2,9 @@
 """Smallest possible env smoke test: play a match with random actions.
 
     python examples/random_agent.py            # headless, prints the result
-    python examples/random_agent.py --render   # watch it in the 3D window
 
-No training dependencies required (numpy + gymnasium only) for the headless run.
+No training dependencies required (numpy + gymnasium only).  To *play* the game
+with graphics, run the web app in ``web/`` instead (see the README).
 """
 
 import argparse
@@ -18,13 +18,11 @@ from wobblesoccer import SoccerEnv
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--render", action="store_true", help="open the 3D window")
     ap.add_argument("--seconds", type=float, default=30.0)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
-    env = SoccerEnv(match_seconds=args.seconds,
-                    render_mode="human" if args.render else None)
+    env = SoccerEnv(match_seconds=args.seconds)
     obs, info = env.reset(seed=args.seed)
     total_r, steps = 0.0, 0
     while True:

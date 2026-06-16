@@ -2,9 +2,8 @@
 numpy>=1.23
 gymnasium>=0.29
 
-# --- 3D human play / rendering (needed for play.py and render_mode="human") ---
-ursina>=7.0
-screeninfo>=0.8        # Ursina queries monitors on import; install explicitly
+# Human play with graphics is the web app in web/ (Three.js + TypeScript) — see
+# web/README.md.  The Python package here is the headless RL environment.
 
 # --- training the example agent (optional: only for examples/train_ppo.py) ---
 stable-baselines3>=2.3
