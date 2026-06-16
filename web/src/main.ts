@@ -5,7 +5,7 @@ import { State } from "./sim/state";
 import { type Action } from "./sim/action";
 import { keeperIndex } from "./sim/ai";
 import { GameScene } from "./render/scene";
-import type { Kit } from "./render/sprites";
+import type { Kit } from "./render/player3d";
 import { HUD } from "./ui/hud";
 import { Minimap } from "./ui/minimap";
 import { Input } from "./input";
@@ -102,6 +102,7 @@ function loop(now: number) {
       sim.step(action, autoPlay);
       input.consumeKicks();
       cur = sim.state.clone();
+      if (cur.lastKicker >= 0) scene.kickAnim(cur.lastKicker);
       acc -= C.DT;
       guard++;
       if (cur.lastGoalTeam >= 0) {
