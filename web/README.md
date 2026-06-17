@@ -69,3 +69,10 @@ web/src/
 The match sim runs at a fixed 30 Hz and the renderer interpolates to the display
 refresh rate. The nations field is an approximation of the 2026 line-up — edit
 `data/teams.ts` to taste.
+
+## Credits
+
+The animated player model (`public/models/Xbot.glb`) is the rigged humanoid from
+the [three.js](https://github.com/mrdoob/three.js) example assets (MIT-licensed),
+tinted per team at runtime. Everything else — pitch, stadium, ball, UI — is
+generated procedurally.

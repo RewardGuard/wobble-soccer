@@ -5,7 +5,7 @@ import { State } from "./sim/state";
 import { type Action } from "./sim/action";
 import { keeperIndex } from "./sim/ai";
 import { GameScene } from "./render/scene";
-import type { Kit } from "./render/player3d";
+import { loadPlayerModel, type Kit } from "./render/playerModel";
 import { HUD } from "./ui/hud";
 import { Minimap } from "./ui/minimap";
 import { Screens } from "./ui/screens";
@@ -68,7 +68,12 @@ let goalTimer = 0;
 let last = performance.now();
 
 addEventListener("resize", () => scene.resize());
-resetToMenu();
+
+// show a loading panel, fetch the player model, then open the menu
+const screenEl = document.getElementById("screen")!;
+screenEl.className = "show";
+screenEl.innerHTML = `<div class="panel"><h1>Loading…</h1></div>`;
+loadPlayerModel().then(() => resetToMenu());
 
 function resetToMenu() {
   T = null;

@@ -4,7 +4,7 @@ import { C } from "../sim/config";
 import type { State } from "../sim/state";
 import { makePitchTexture, makeBallTexture } from "./textures";
 import { makeStadium } from "./stadium";
-import { Player3D, type Kit } from "./player3d";
+import { ModelPlayer, type Kit } from "./playerModel";
 
 class BallView {
   mesh: THREE.Mesh;
@@ -31,7 +31,7 @@ export class GameScene {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
-  private players: Player3D[] = [];
+  private players: ModelPlayer[] = [];
   private ball = new BallView();
   private reticle = new THREE.Group();
   private camTarget = new THREE.Vector3();
@@ -63,7 +63,7 @@ export class GameScene {
   setTeams(kits: Kit[]) {
     this.clearPlayers();
     for (const kit of kits) {
-      const p = new Player3D(kit);
+      const p = new ModelPlayer(kit);
       this.players.push(p);
       this.scene.add(p.group);
     }
