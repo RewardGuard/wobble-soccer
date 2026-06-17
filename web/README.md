@@ -70,9 +70,23 @@ The match sim runs at a fixed 30 Hz and the renderer interpolates to the display
 refresh rate. The nations field is an approximation of the 2026 line-up — edit
 `data/teams.ts` to taste.
 
+## Use your own player model
+
+The default player is a rigged humanoid, tinted to each team's kit at runtime.
+To swap in a different one, drop a rigged glTF with **run** and **idle** animation
+clips at:
+
+```
+web/public/models/player.glb
+```
+
+It's picked up automatically (falling back to the bundled model if absent). Good
+free sources: [Mixamo](https://www.mixamo.com) (pick a character + Run/Idle, export
+as glTF), or any CC0 rigged character (Quaternius, KayKit). The model is scaled to
+height and tinted by body region, so a plain/grey character works best.
+
 ## Credits
 
-The animated player model (`public/models/Xbot.glb`) is the rigged humanoid from
-the [three.js](https://github.com/mrdoob/three.js) example assets (MIT-licensed),
-tinted per team at runtime. Everything else — pitch, stadium, ball, UI — is
-generated procedurally.
+The default animated player model (`public/models/Xbot.glb`) is the rigged
+humanoid from the [three.js](https://github.com/mrdoob/three.js) example assets
+(MIT-licensed). Everything else — pitch, stadium, ball, UI — is procedural.

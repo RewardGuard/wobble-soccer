@@ -91,11 +91,11 @@ export class GameScene {
   private buildLights() {
     this.scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x4a7a4a, 0.85));
     const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
-    sun.position.set(-30, 50, 22);
+    sun.position.set(-40, 64, 28);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     const cam = sun.shadow.camera as THREE.OrthographicCamera;
-    cam.left = -46; cam.right = 46; cam.top = 32; cam.bottom = -32; cam.near = 1; cam.far = 140;
+    cam.left = -56; cam.right = 56; cam.top = 40; cam.bottom = -40; cam.near = 1; cam.far = 170;
     sun.shadow.bias = -0.0004;
     this.scene.add(sun);
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.25));
@@ -209,12 +209,12 @@ export class GameScene {
   }
 
   updateCamera(targetX: number, targetZ: number, dt: number) {
-    const tx = Math.max(-C.HALF_LENGTH * 0.55, Math.min(C.HALF_LENGTH * 0.55, targetX));
-    const tz = Math.max(-C.HALF_WIDTH * 0.45, Math.min(C.HALF_WIDTH * 0.45, targetZ));
+    const tx = Math.max(-C.HALF_LENGTH * 0.5, Math.min(C.HALF_LENGTH * 0.5, targetX));
+    const tz = Math.max(-C.HALF_WIDTH * 0.4, Math.min(C.HALF_WIDTH * 0.4, targetZ));
     this.camTarget.lerp(new THREE.Vector3(tx, 0, tz), 1 - Math.pow(0.0015, dt));
-    const desired = new THREE.Vector3(this.camTarget.x - 26, 26, this.camTarget.z);
+    const desired = new THREE.Vector3(this.camTarget.x - 33, 31, this.camTarget.z);
     this.camera.position.lerp(desired, 1 - Math.pow(0.0008, dt));
-    this.camera.lookAt(this.camTarget.x + 10, 1.0, this.camTarget.z);
+    this.camera.lookAt(this.camTarget.x + 14, 1.0, this.camTarget.z);
   }
 
   resize() {

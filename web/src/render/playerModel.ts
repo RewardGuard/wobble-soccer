@@ -21,7 +21,15 @@ let GLTF: { scene: THREE.Group; animations: THREE.AnimationClip[] } | null = nul
 export async function loadPlayerModel(): Promise<void> {
   if (GLTF) return;
   const loader = new GLTFLoader();
-  const g = await loader.loadAsync(`${import.meta.env.BASE_URL}models/Xbot.glb`);
+  const base = import.meta.env.BASE_URL;
+  // Drop your own rigged GLB (with run + idle clips) at public/models/player.glb
+  // and it will be used automatically; otherwise we fall back to the bundled one.
+  let g;
+  try {
+    g = await loader.loadAsync(`${base}models/player.glb`);
+  } catch {
+    g = await loader.loadAsync(`${base}models/Xbot.glb`);
+  }
   GLTF = { scene: g.scene, animations: g.animations };
 }
 
