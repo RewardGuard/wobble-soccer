@@ -64,6 +64,7 @@ export class SoccerSim {
     const s = this.state;
     s.lastGoalTeam = -1;
     s.lastKicker = -1;
+    s.lastKickWasShoot = false;
 
     const raw = computeActions(s, this.rng);
     if (!aiControlsActive) raw[s.activePlayer] = agentAction; // else: pure AI-vs-AI
@@ -203,6 +204,7 @@ export class SoccerSim {
     s.ballVel[1] = loft;
     s.possession = -1;
     s.lastKicker = p;
+    s.lastKickWasShoot = it.doShoot;
     pl.kickCooldown = C.KICK_COOLDOWN;
     return true;
   }

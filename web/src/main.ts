@@ -13,6 +13,7 @@ import { Input } from "./input";
 import { Shootout } from "./shootout";
 import { Tournament, nation, type Fixture, type Tie } from "./tournament/tournament";
 import { awayColor } from "./data/teams";
+import { commentary } from "./commentary";
 
 const TEAM_SIZE = C.TEAM_SIZE;
 const MATCH_SECS = 120;
@@ -140,6 +141,7 @@ function startMatch() {
   acc = 0; goalTimer = 0; autoPlay = false; matchMode = "playing";
   hud.message(null); hud.setPaused(false);
   mode = "match";
+  commentary.kickoff(nation(human).name, nation(opp).name);
 }
 
 function endMatch() {
@@ -147,6 +149,12 @@ function endMatch() {
   const hG = cur.score[0], oG = cur.score[1];
   const aG = curHome === human ? hG : oG; // goals for fixture's "a"
   const bG = curHome === human ? oG : hG;
+
+  const opp = curHome === human ? curAway : curHome;
+  const ft = hG > oG ? `¡Final del partido! Gana ${nation(human).name}, ${hG} a ${oG}.`
+    : oG > hG ? `¡Final del partido! Gana ${nation(opp).name}, ${oG} a ${hG}.`
+    : `¡Final del partido! Empataron ${hG} a ${oG}.`;
+  commentary.fullTime(ft);
 
   if (!curKnockout) {
     T!.recordGroupResult(curFixture!, aG, bG);
@@ -205,9 +213,15 @@ function stepMatch(dt: number) {
     input.consumeKicks();
     cur = sim.state.clone();
     if (cur.lastKicker >= 0) scene.kickAnim(cur.lastKicker);
+    if (cur.lastKicker >= 0 && cur.lastKickWasShoot) commentary.shot();
     acc -= C.DT;
     guard++;
-    if (cur.lastGoalTeam >= 0) { hud.goal(cur.lastGoalTeam); prev = cur.clone(); matchMode = "goal"; goalTimer = 1.6; acc = 0; break; }
+    if (cur.lastGoalTeam >= 0) {
+      hud.goal(cur.lastGoalTeam);
+      const opp = curHome === T!.human ? curAway : curHome;
+      commentary.goal(nation(cur.lastGoalTeam === 0 ? T!.human : opp).name);
+      prev = cur.clone(); matchMode = "goal"; goalTimer = 1.6; acc = 0; break;
+    }
     if (cur.timeLeft <= 0) { matchMode = "over"; break; }
   }
   if (matchMode === "over") endMatch();
@@ -217,6 +231,8 @@ function loop(now: number) {
   requestAnimationFrame(loop);
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
+
+  if (input.justPressed("KeyC")) commentary.toggle(); // toggle Spanish narrator
 
   if (mode === "match") {
     if (input.justPressed("Escape") || input.justPressed("KeyP")) {
@@ -251,6 +267,7 @@ function loop(now: number) {
 requestAnimationFrame(loop);
 
 if (import.meta.env.DEV) {
+  (window as any).__commentary = commentary;
   (window as any).__bench = (secs = 180, seeds = 6) => {
     const results: number[][] = [];
     let tot = 0;

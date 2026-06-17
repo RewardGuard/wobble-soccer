@@ -21,6 +21,7 @@ export class State {
   teamSize = 5;
   lastGoalTeam = -1; // team that scored this step, else -1
   lastKicker = -1; // player index who kicked this step, else -1 (for anim)
+  lastKickWasShoot = false; // whether the last kick was a shot (for commentary)
 
   clone(): State {
     const s = new State();
@@ -40,6 +41,7 @@ export class State {
     s.teamSize = this.teamSize;
     s.lastGoalTeam = this.lastGoalTeam;
     s.lastKicker = this.lastKicker;
+    s.lastKickWasShoot = this.lastKickWasShoot;
     return s;
   }
 

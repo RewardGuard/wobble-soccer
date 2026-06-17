@@ -4,6 +4,7 @@
  * death. Calls onDone(pkHome, pkAway) when decided.
  */
 import { nation } from "./tournament/tournament";
+import { commentary } from "./commentary";
 
 type Phase = "shoot" | "dive" | "anim" | "result" | "done";
 
@@ -117,6 +118,7 @@ export class Shootout {
     else { this.resultsA.push(scored); if (scored) this.scoreA++; }
     this.resultText = scored ? "GOAL!" : saved ? "SAVED!" : "MISS!";
     this.resultGood = scored;
+    commentary.penalty(scored ? "goal" : saved ? "save" : "miss");
     this.phase = "result";
     this.animT = 0;
   }
