@@ -59,6 +59,14 @@ function makeKitMaterial(kit: Kit, yMin: number, yMax: number): THREE.MeshStanda
   return m;
 }
 
+/** Frame-rate-independent damping toward a target angle (shortest way round). */
+function dampAngle(current: number, target: number, lambda: number, dt: number): number {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * (1 - Math.exp(-lambda * dt));
+}
+
 const clip = (name: string): THREE.AnimationClip => {
   const clips = GLTF!.animations;
   return (
@@ -78,11 +86,12 @@ export class ModelPlayer {
   constructor(kit: Kit) {
     const model = cloneSkinned(GLTF!.scene) as THREE.Group;
 
-    // scale so the player is ~1.9 units tall, feet on the ground
+    // scale so the player is ~1.6 units tall; widen x/z a touch for a stockier,
+    // more athletic (less slim) build
     const box = new THREE.Box3().setFromObject(model);
     const h = box.max.y - box.min.y || 1;
-    const s = 1.9 / h;
-    model.scale.setScalar(s);
+    const s = 1.6 / h;
+    model.scale.set(s * 1.18, s, s * 1.18);
     model.position.y = -box.min.y * s;
 
     model.traverse((o) => {
@@ -120,13 +129,15 @@ export class ModelPlayer {
 
   update(x: number, z: number, faceX: number, faceZ: number, speed: number, active: boolean, dt: number) {
     this.group.position.set(x, 0, z);
-    this.group.rotation.y = Math.atan2(faceX, faceZ) + Math.PI; // model faces -z by default
+    // smoothly turn to face the movement direction (Mixamo rig faces +z)
+    const targetYaw = Math.atan2(faceX, faceZ);
+    this.group.rotation.y = dampAngle(this.group.rotation.y, targetYaw, 12, dt);
 
     const running = speed > 0.6;
     const rw = THREE.MathUtils.damp(this.run.getEffectiveWeight(), running ? 1 : 0, 10, dt);
     this.run.setEffectiveWeight(rw);
     this.idle.setEffectiveWeight(1 - rw);
-    this.run.timeScale = Math.max(0.7, speed / 4.5);
+    this.run.timeScale = Math.max(0.85, Math.min(speed / 6.5, 1.5));
     this.mixer.update(dt);
 
     this.marker.visible = active;
