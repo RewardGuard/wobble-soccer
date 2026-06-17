@@ -25,6 +25,40 @@ export async function loadPlayerModel(): Promise<void> {
   GLTF = { scene: g.scene, animations: g.animations };
 }
 
+/** A kitted material: colours the rigged body by rest-pose height (hair / skin /
+ *  jersey / shorts / socks / boots) so the humanoid reads as a footballer. */
+function makeKitMaterial(kit: Kit, yMin: number, yMax: number): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uJersey = { value: new THREE.Color(kit.jersey) };
+    sh.uniforms.uShorts = { value: new THREE.Color(kit.shorts) };
+    sh.uniforms.uSkin = { value: new THREE.Color(kit.skin) };
+    sh.uniforms.uSocks = { value: new THREE.Color(kit.socks) };
+    sh.uniforms.uHair = { value: new THREE.Color(kit.hair) };
+    sh.uniforms.uBoot = { value: new THREE.Color(0x1b1b1b) };
+    sh.uniforms.uYMin = { value: yMin };
+    sh.uniforms.uYMax = { value: yMax };
+    sh.vertexShader = "varying float vKitY;\n" +
+      sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vKitY = position.y;");
+    sh.fragmentShader =
+      "varying float vKitY;\nuniform vec3 uJersey,uShorts,uSkin,uSocks,uHair,uBoot;\nuniform float uYMin,uYMax;\n" +
+      sh.fragmentShader.replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+         float kt = (vKitY - uYMin) / max(uYMax - uYMin, 0.0001);
+         vec3 kit;
+         if (kt > 0.93) kit = uHair;
+         else if (kt > 0.84) kit = uSkin;
+         else if (kt > 0.46) kit = uJersey;
+         else if (kt > 0.34) kit = uShorts;
+         else if (kt > 0.12) kit = uSocks;
+         else kit = uBoot;
+         diffuseColor.rgb = kit;`,
+      );
+  };
+  return m;
+}
+
 const clip = (name: string): THREE.AnimationClip => {
   const clips = GLTF!.animations;
   return (
@@ -44,20 +78,21 @@ export class ModelPlayer {
   constructor(kit: Kit) {
     const model = cloneSkinned(GLTF!.scene) as THREE.Group;
 
-    // scale so the player is ~2.5 units tall, feet on the ground
+    // scale so the player is ~1.9 units tall, feet on the ground
     const box = new THREE.Box3().setFromObject(model);
     const h = box.max.y - box.min.y || 1;
-    const s = 2.5 / h;
+    const s = 1.9 / h;
     model.scale.setScalar(s);
     model.position.y = -box.min.y * s;
 
-    const color = new THREE.Color(kit.jersey);
     model.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       m.castShadow = true;
       m.receiveShadow = true;
-      m.material = new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0 });
+      m.geometry.computeBoundingBox();
+      const gb = m.geometry.boundingBox!;
+      m.material = makeKitMaterial(kit, gb.min.y, gb.max.y);
     });
     this.group.add(model);
 

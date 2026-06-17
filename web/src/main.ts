@@ -251,6 +251,18 @@ function loop(now: number) {
 requestAnimationFrame(loop);
 
 if (import.meta.env.DEV) {
+  (window as any).__bench = (secs = 180, seeds = 6) => {
+    const results: number[][] = [];
+    let tot = 0;
+    for (let k = 0; k < seeds; k++) {
+      const s = new SoccerSim(TEAM_SIZE, secs, 1000 + k);
+      const steps = Math.round(secs / C.DT);
+      for (let i = 0; i < steps; i++) s.step(ZERO, true);
+      results.push([...s.state.score]);
+      tot += s.state.score[0] + s.state.score[1];
+    }
+    return { perMatch: results, avgGoals: tot / seeds };
+  };
   (window as any).__simTournament = (code: string) => {
     const t = new Tournament(code);
     t.finishGroupStage();

@@ -166,10 +166,24 @@ export class SoccerSim {
 
   private applyKicks(intents: Intent[]): boolean {
     const s = this.state;
-    const p = s.possession;
+    // the possessor kicks if they want to; otherwise the nearest player who
+    // wants to kick and is within lunge range pokes the loose ball (responsive!)
+    let p = -1;
+    if (s.possession >= 0 && (intents[s.possession].doPass || intents[s.possession].doShoot)) {
+      p = s.possession;
+    } else {
+      const lunge = C.CAPTURE_RADIUS * 1.7;
+      let bd = lunge;
+      for (let i = 0; i < s.players.length; i++) {
+        const it = intents[i];
+        if ((it.doPass || it.doShoot) && s.players[i].kickCooldown <= 0 && s.ballPos[1] < C.CAPTURE_HEIGHT) {
+          const d = Math.hypot(s.players[i].pos[0] - s.ballPos[0], s.players[i].pos[2] - s.ballPos[2]);
+          if (d < bd) { bd = d; p = i; }
+        }
+      }
+    }
     if (p < 0) return false;
     const it = intents[p];
-    if (!it.doPass && !it.doShoot) return false;
     const d = it.aimDir;
     let speed: number;
     let loft: number;
