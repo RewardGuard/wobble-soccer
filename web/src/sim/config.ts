@@ -31,6 +31,10 @@ export const C = {
   DRIBBLE_OFFSET: 1.15,
   KICK_COOLDOWN: 0.3,
 
+  // human controls
+  SPRINT_MULT: 1.45, // controlled player speed boost while holding Shift
+  TACKLE_RANGE: 1.4, // how close the human gets to a carrier to win the ball
+
   // goalkeeper (can pluck high balls inside its own box)
   GK_REACH: 1.55,
   GK_CATCH_HEIGHT: 4.2,

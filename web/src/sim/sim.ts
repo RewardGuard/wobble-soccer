@@ -11,6 +11,7 @@ export class SoccerSim {
   state = new State();
   rng: RNG;
   private humanControlled = false;
+  private sprinting = false;
   constructor(public teamSize = C.TEAM_SIZE, public matchSeconds = C.MATCH_SECONDS, seed = 1) {
     this.rng = new RNG(seed);
     this.freshState();
@@ -61,12 +62,13 @@ export class SoccerSim {
     this.updateActive();
   }
 
-  step(agentAction: Action, aiControlsActive = false): State {
+  step(agentAction: Action, aiControlsActive = false, sprint = false): State {
     const s = this.state;
     s.lastGoalTeam = -1;
     s.lastKicker = -1;
     s.lastKickWasShoot = false;
-    this.humanControlled = !aiControlsActive; // ball-magnet aid only for a real human
+    this.humanControlled = !aiControlsActive; // aids (magnet/tackle/sprint) only for a real human
+    this.sprinting = sprint && this.humanControlled;
 
     const raw = computeActions(s, this.rng);
     if (!aiControlsActive) raw[s.activePlayer] = agentAction; // else: pure AI-vs-AI
@@ -74,6 +76,7 @@ export class SoccerSim {
 
     this.movePlayers(intents);
     this.resolveCollisions();
+    this.humanTackle();
     this.updatePossession();
     const kicked = this.applyKicks(intents);
     if (s.possession >= 0 && !kicked) this.dribble();
@@ -91,7 +94,8 @@ export class SoccerSim {
     const maxDv = C.PLAYER_ACCEL * C.DT;
     for (let i = 0; i < s.players.length; i++) {
       const p = s.players[i];
-      const maxSpeed = C.PLAYER_MAX_SPEED * (this.isKeeper(i) ? C.GK_SPEED_BONUS : 1);
+      const sprintMul = i === s.activePlayer && this.sprinting ? C.SPRINT_MULT : 1;
+      const maxSpeed = C.PLAYER_MAX_SPEED * (this.isKeeper(i) ? C.GK_SPEED_BONUS : 1) * sprintMul;
       const desired = [intents[i].move[0] * maxSpeed, intents[i].move[1] * maxSpeed];
       let dvx = desired[0] - p.vel[0];
       let dvz = desired[1] - p.vel[2];
@@ -166,6 +170,28 @@ export class SoccerSim {
 
   private isKeeper(i: number): boolean {
     return i === 0 || i === this.teamSize;
+  }
+
+  /** When the human presses an opponent carrier closely, knock the ball loose. */
+  private humanTackle() {
+    const s = this.state;
+    if (!this.humanControlled || s.possession < 0) return;
+    const carrier = s.players[s.possession];
+    if (carrier.team === 0) return; // a team-mate has it — don't tackle
+    const ap = s.players[s.activePlayer];
+    if (ap.kickCooldown > 0) return;
+    const d = Math.hypot(ap.pos[0] - carrier.pos[0], ap.pos[2] - carrier.pos[2]);
+    if (d > C.TACKLE_RANGE) return;
+    // ball comes loose, rolling toward the tackler (who then collects via magnet)
+    carrier.kickCooldown = C.KICK_COOLDOWN;
+    s.possession = -1;
+    const dx = ap.pos[0] - s.ballPos[0];
+    const dz = ap.pos[2] - s.ballPos[2];
+    const n = Math.hypot(dx, dz) || 1;
+    s.ballPos[1] = C.BALL_RADIUS;
+    s.ballVel[0] = (dx / n) * 4;
+    s.ballVel[2] = (dz / n) * 4;
+    s.ballVel[1] = 0;
   }
 
   private applyKicks(intents: Intent[]): boolean {

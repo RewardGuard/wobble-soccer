@@ -32,6 +32,10 @@ export class Input {
     return this.pressed.has(code);
   }
 
+  isSprinting(): boolean {
+    return this.held.has("ShiftLeft") || this.held.has("ShiftRight");
+  }
+
   endFrame() {
     this.pressed.clear();
   }
@@ -63,7 +67,34 @@ export class Input {
       this.aim.active = false;
     }
 
+    // directed pass: when passing, snap the aim toward the best team-mate near it
+    if (this.pendingPass) {
+      const mate = this.bestPassTarget(state, ap.pos[0], ap.pos[2], ax, az);
+      if (mate) { ax = mate.dx; az = mate.dz; power = mate.power; }
+    }
+
     return [moveX, moveZ, ax * power, az * power, this.pendingPass ? 1 : -1, this.pendingShoot ? 1 : -1];
+  }
+
+  /** Find the team-0 team-mate most aligned with the aim direction (aim-assist). */
+  private bestPassTarget(state: State, px: number, pz: number, aimX: number, aimZ: number) {
+    let best: { dx: number; dz: number; power: number } | null = null;
+    let bestDot = 0.72; // ~44° cone
+    for (let i = 0; i < state.players.length; i++) {
+      const p = state.players[i];
+      if (p.team !== 0 || i === state.activePlayer) continue;
+      const dx = p.pos[0] - px;
+      const dz = p.pos[2] - pz;
+      const d = Math.hypot(dx, dz);
+      if (d < 3) continue; // ignore team-mates right on top of us
+      const ux = dx / d, uz = dz / d;
+      const dot = ux * aimX + uz * aimZ;
+      if (dot > bestDot) {
+        bestDot = dot;
+        best = { dx: ux, dz: uz, power: Math.max(0.45, Math.min(d / 24, 1)) };
+      }
+    }
+    return best;
   }
 
   consumeKicks() {

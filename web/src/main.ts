@@ -209,7 +209,7 @@ function stepMatch(dt: number) {
   while (acc >= C.DT && guard < 5) {
     const action: Action = autoPlay ? ZERO : input.buildAction(cur, scene.camera);
     prev = cur;
-    sim.step(action, autoPlay);
+    sim.step(action, autoPlay, !autoPlay && input.isSprinting());
     input.consumeKicks();
     cur = sim.state.clone();
     if (cur.lastKicker >= 0) scene.kickAnim(cur.lastKicker);
