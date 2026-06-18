@@ -10,6 +10,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export class SoccerSim {
   state = new State();
   rng: RNG;
+  private humanControlled = false;
   constructor(public teamSize = C.TEAM_SIZE, public matchSeconds = C.MATCH_SECONDS, seed = 1) {
     this.rng = new RNG(seed);
     this.freshState();
@@ -65,6 +66,7 @@ export class SoccerSim {
     s.lastGoalTeam = -1;
     s.lastKicker = -1;
     s.lastKickWasShoot = false;
+    this.humanControlled = !aiControlsActive; // ball-magnet aid only for a real human
 
     const raw = computeActions(s, this.rng);
     if (!aiControlsActive) raw[s.activePlayer] = agentAction; // else: pure AI-vs-AI
@@ -151,6 +153,7 @@ export class SoccerSim {
           maxH = C.GK_CATCH_HEIGHT;
         }
       }
+      if (i === s.activePlayer && this.humanControlled) reach += 0.4; // human aid: collect ball easier
       if (s.ballPos[1] >= maxH) continue;
       const d = Math.hypot(p.pos[0] - s.ballPos[0], p.pos[2] - s.ballPos[2]);
       if (d < reach && d < bestD) {

@@ -249,7 +249,11 @@ function loop(now: number) {
     scene.sync(prev, cur, alpha, dt);
     const bx = prev.ballPos[0] + (cur.ballPos[0] - prev.ballPos[0]) * alpha;
     const bz = prev.ballPos[2] + (cur.ballPos[2] - prev.ballPos[2]) * alpha;
-    scene.updateCamera(bx, bz, dt);
+    // camera follows the controlled player, biased a little toward the ball
+    const ap = cur.activePlayer;
+    const px = prev.players[ap].pos[0] + (cur.players[ap].pos[0] - prev.players[ap].pos[0]) * alpha;
+    const pz = prev.players[ap].pos[2] + (cur.players[ap].pos[2] - prev.players[ap].pos[2]) * alpha;
+    scene.updateCamera(px * 0.64 + bx * 0.36, pz * 0.64 + bz * 0.36, dt);
     if (matchMode === "playing" && !autoPlay) {
       input.buildAction(cur, scene.camera);
       const ap = cur.players[cur.activePlayer];
