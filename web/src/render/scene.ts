@@ -33,7 +33,9 @@ export class GameScene {
   camera: THREE.PerspectiveCamera;
   private players: ModelPlayer[] = [];
   private ball = new BallView();
-  private reticle = new THREE.Group();
+  private aimLine = new THREE.Group();
+  private aimStrip!: THREE.Mesh;
+  private aimHead!: THREE.Mesh;
   private camTarget = new THREE.Vector3();
 
   constructor(container: HTMLElement) {
@@ -55,7 +57,7 @@ export class GameScene {
     this.buildField();
     this.scene.add(makeStadium());
     this.scene.add(this.ball.mesh);
-    this.buildReticle();
+    this.buildAimLine();
     this.resize();
   }
 
@@ -176,20 +178,32 @@ export class GameScene {
     this.scene.add(pole, flag);
   }
 
-  private buildReticle() {
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.5, 0.74, 24),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    this.reticle.add(ring);
-    this.reticle.visible = false;
-    this.scene.add(this.reticle);
+  private buildAimLine() {
+    const mat = new THREE.MeshBasicMaterial({ color: 0x49e06b, transparent: true, opacity: 0.85, depthWrite: false });
+    this.aimStrip = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.06, 1), mat);
+    this.aimHead = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.7, 4), mat);
+    this.aimHead.rotation.x = Math.PI / 2; // point along +z (the line's local forward)
+    this.aimLine.add(this.aimStrip, this.aimHead);
+    this.aimLine.visible = false;
+    this.scene.add(this.aimLine);
   }
 
-  setReticle(x: number, z: number, visible: boolean) {
-    this.reticle.visible = visible;
-    if (visible) this.reticle.position.set(x, 0.04, z);
+  /** Draw the aim as a line from the player toward the cursor; length = power. */
+  setAim(px: number, pz: number, ax: number, az: number, power: number, visible: boolean) {
+    let dx = ax - px, dz = az - pz;
+    const d = Math.hypot(dx, dz);
+    if (!visible || d < 1e-3) { this.aimLine.visible = false; return; }
+    dx /= d; dz /= d;
+    const len = Math.max(1.6, power * 18);
+    this.aimLine.visible = true;
+    this.aimLine.position.set(px, 0.08, pz);
+    this.aimLine.rotation.y = Math.atan2(dx, dz);
+    this.aimStrip.scale.z = len;
+    this.aimStrip.position.set(0, 0, len / 2);
+    this.aimHead.position.set(0, 0, len + 0.45);
+    (this.aimStrip.material as THREE.MeshBasicMaterial).color.lerpColors(
+      new THREE.Color(0x49e06b), new THREE.Color(0xff4d4d), Math.min(power, 1),
+    );
   }
 
   kickAnim(i: number) {

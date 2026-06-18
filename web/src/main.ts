@@ -252,13 +252,14 @@ function loop(now: number) {
     scene.updateCamera(bx, bz, dt);
     if (matchMode === "playing" && !autoPlay) {
       input.buildAction(cur, scene.camera);
-      scene.setReticle(input.aim.x, input.aim.z, input.aim.active);
-    } else scene.setReticle(0, 0, false);
+      const ap = cur.players[cur.activePlayer];
+      scene.setAim(ap.pos[0], ap.pos[2], input.aim.x, input.aim.z, input.aim.power, input.aim.active);
+    } else scene.setAim(0, 0, 0, 0, 0, false);
     hud.update(cur, dt);
     minimap.draw(cur);
   } else {
     scene.updateCamera(0, 0, dt); // gentle idle view behind menus/shootout
-    scene.setReticle(0, 0, false);
+    scene.setAim(0, 0, 0, 0, 0, false);
   }
 
   scene.render();
