@@ -70,20 +70,33 @@ The match sim runs at a fixed 30 Hz and the renderer interpolates to the display
 refresh rate. The nations field is an approximation of the 2026 line-up — edit
 `data/teams.ts` to taste.
 
-## Use your own player model
+## Drop-in model slots
 
-The default player is a rigged humanoid, tinted to each team's kit at runtime.
-To swap in a different one, drop a rigged glTF with **run** and **idle** animation
-clips at:
+Every visual piece has a **slot**: drop a glTF at the path below and it's used
+automatically; leave it empty and the game uses a built-in **procedural
+placeholder**. Nothing custom ships with the repo — populate the slots with your
+own or clearly-licensed models (e.g. modelled yourself, [Mixamo](https://www.mixamo.com),
+or CC0 from Quaternius / KayKit).
 
+| Slot file (`web/public/models/…`) | What it replaces | Placeholder if empty |
+|---|---|---|
+| `player.glb` | outfield player (rigged; **run** + **idle** clips) | bundled `Xbot.glb` |
+| `gk.glb` | goalkeeper (rigged) | the player model |
+| `referee.glb` | referee (rigged) | none |
+| `goal.glb` | goal | procedural posts + net |
+| `stadium.glb` | stadium | procedural stands + crowd |
+| `bench.glb` | dugout/bench | none |
+
+Players are scaled to height and **tinted per team** by body region (head = skin,
+torso = jersey, shorts, socks, boots), so a plain/grey model works best. Static
+props (goal/stadium) are auto-scaled to fit the pitch. Example:
+
+```bash
+cp my_player.glb   web/public/models/player.glb
+cp my_keeper.glb   web/public/models/gk.glb
+cp my_goal.glb     web/public/models/goal.glb
+cp my_stadium.glb  web/public/models/stadium.glb
 ```
-web/public/models/player.glb
-```
-
-It's picked up automatically (falling back to the bundled model if absent). Good
-free sources: [Mixamo](https://www.mixamo.com) (pick a character + Run/Idle, export
-as glTF), or any CC0 rigged character (Quaternius, KayKit). The model is scaled to
-height and tinted by body region, so a plain/grey character works best.
 
 ## Credits
 

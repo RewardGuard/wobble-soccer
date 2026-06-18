@@ -4,7 +4,8 @@ import { C } from "../sim/config";
 import type { State } from "../sim/state";
 import { makePitchTexture, makeBallTexture } from "./textures";
 import { makeStadium } from "./stadium";
-import { ModelPlayer, type Kit } from "./playerModel";
+import { ModelPlayer, RefereeView, staticModel, type Kit } from "./playerModel";
+import { keeperIndex } from "../sim/ai";
 
 class BallView {
   mesh: THREE.Mesh;
@@ -33,6 +34,7 @@ export class GameScene {
   camera: THREE.PerspectiveCamera;
   private players: ModelPlayer[] = [];
   private ball = new BallView();
+  private referee: RefereeView | null = null;
   private aimLine = new THREE.Group();
   private aimStrip!: THREE.Mesh;
   private aimHead!: THREE.Mesh;
@@ -54,18 +56,44 @@ export class GameScene {
 
     this.buildSky();
     this.buildLights();
+    this.buildStadium();
     this.buildField();
-    this.scene.add(makeStadium());
+    this.buildReferee();
     this.scene.add(this.ball.mesh);
     this.buildAimLine();
     this.resize();
   }
 
-  /** (Re)build the player models for a new match's two teams. */
+  // stadium.glb slot -> use it (scaled to the pitch); otherwise procedural stands
+  private buildStadium() {
+    const m = staticModel("stadium");
+    if (!m) { this.scene.add(makeStadium()); return; }
+    const box = new THREE.Box3().setFromObject(m);
+    const sx = (2 * C.HALF_LENGTH + 36) / Math.max(box.max.x - box.min.x, 0.001);
+    const sz = (2 * C.HALF_WIDTH + 36) / Math.max(box.max.z - box.min.z, 0.001);
+    const s = Math.max(sx, sz);
+    m.scale.setScalar(s);
+    m.position.y = -box.min.y * s;
+    this.scene.add(m);
+  }
+
+  // referee.glb slot -> add a referee; empty slot -> none
+  private buildReferee() {
+    if (!staticModel("referee")) return;
+    const ref = new RefereeView();
+    ref.setPos(0, C.HALF_WIDTH * 0.35, Math.PI);
+    this.scene.add(ref.group);
+    this.referee = ref;
+  }
+
+  /** (Re)build the player models for a new match's two teams (keepers use the GK slot). */
   setTeams(kits: Kit[]) {
     this.clearPlayers();
-    for (const kit of kits) {
-      const p = new ModelPlayer(kit);
+    const teamSize = kits.length / 2;
+    for (let i = 0; i < kits.length; i++) {
+      const team = i < teamSize ? 0 : 1;
+      const role = i === keeperIndex(team, teamSize) ? "gk" : "outfield";
+      const p = new ModelPlayer(kits[i], role);
       this.players.push(p);
       this.scene.add(p.group);
     }
@@ -139,6 +167,19 @@ export class GameScene {
   }
 
   private buildGoal(sign: number) {
+    // goal.glb slot -> use it (scaled to the goal mouth); otherwise procedural posts+net
+    const model = staticModel("goal");
+    if (model) {
+      const box = new THREE.Box3().setFromObject(model);
+      const w = Math.max(box.max.z - box.min.z, box.max.x - box.min.x, 0.001);
+      const s = (2 * C.GOAL_HALF_WIDTH) / w;
+      model.scale.setScalar(s);
+      const b2 = new THREE.Box3().setFromObject(model);
+      model.position.set(sign * C.HALF_LENGTH, -b2.min.y, 0);
+      model.rotation.y = sign > 0 ? Math.PI : 0;
+      this.scene.add(model);
+      return;
+    }
     const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
     const gw = C.GOAL_HALF_WIDTH;
     const gh = C.GOAL_HEIGHT;
@@ -220,6 +261,7 @@ export class GameScene {
       this.players[i].update(x, z, p.face[0], p.face[1], speed, i === cur.activePlayer, dt);
     }
     this.ball.update(prev.ballPos, cur.ballPos, alpha);
+    this.referee?.update(dt);
   }
 
   updateCamera(targetX: number, targetZ: number, dt: number) {

@@ -1,7 +1,15 @@
 /**
- * Player rendered from a rigged, animated glTF humanoid (three.js example model,
- * MIT-licensed) — proper skeletal idle/run animation, tinted per team kit.
- * Loaded once and cloned per player with SkeletonUtils.
+ * Model loading with optional drop-in "slots". Each role tries to load a GLB
+ * from public/models/<name>.glb; if it isn't there, the scene uses a procedural
+ * placeholder instead. Drop your own (clearly-licensed) models in to replace any
+ * slot — nothing here ships with custom assets.
+ *
+ *   player.glb    outfield player (rigged, run + idle clips)   [falls back to Xbot.glb]
+ *   gk.glb        goalkeeper (rigged)                           [falls back to the player model]
+ *   referee.glb   referee (rigged)                              [placeholder: none]
+ *   goal.glb      goal                                          [placeholder: procedural posts+net]
+ *   stadium.glb   stadium                                       [placeholder: procedural stands]
+ *   bench.glb     dugout/bench                                  [placeholder: none]
  */
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -16,25 +24,56 @@ export interface Kit {
   number: number;
 }
 
-let GLTF: { scene: THREE.Group; animations: THREE.AnimationClip[] } | null = null;
+type GLTFData = { scene: THREE.Group; animations: THREE.AnimationClip[] };
+const cache: Record<string, GLTFData> = {};
 
-export async function loadPlayerModel(): Promise<void> {
-  if (GLTF) return;
-  const loader = new GLTFLoader();
-  const base = import.meta.env.BASE_URL;
-  // Drop your own rigged GLB (with run + idle clips) at public/models/player.glb
-  // and it will be used automatically; otherwise we fall back to the bundled one.
-  let g;
-  try {
-    g = await loader.loadAsync(`${base}models/player.glb`);
-  } catch {
-    g = await loader.loadAsync(`${base}models/Xbot.glb`);
+async function load(loader: GLTFLoader, base: string, key: string, candidates: string[]) {
+  for (const p of candidates) {
+    try {
+      const g = await loader.loadAsync(`${base}models/${p}`);
+      cache[key] = { scene: g.scene, animations: g.animations };
+      return;
+    } catch {
+      /* slot empty / file missing — try next candidate, else leave unset */
+    }
   }
-  GLTF = { scene: g.scene, animations: g.animations };
 }
 
-/** A kitted material: colours the rigged body by rest-pose height (hair / skin /
- *  jersey / shorts / socks / boots) so the humanoid reads as a footballer. */
+export async function loadPlayerModel(): Promise<void> {
+  if (cache.player) return;
+  const loader = new GLTFLoader();
+  const base = import.meta.env.BASE_URL;
+  await Promise.all([
+    load(loader, base, "player", ["player.glb", "Xbot.glb"]),
+    load(loader, base, "gk", ["gk.glb", "player.glb", "Xbot.glb"]),
+    load(loader, base, "referee", ["referee.glb"]),
+    load(loader, base, "goal", ["goal.glb"]),
+    load(loader, base, "stadium", ["stadium.glb"]),
+    load(loader, base, "bench", ["bench.glb"]),
+  ]);
+}
+
+export const hasModel = (key: string) => !!cache[key];
+
+/** Clone of a static prop model (goal/stadium/bench), or null if the slot is empty. */
+export function staticModel(key: string): THREE.Group | null {
+  if (!cache[key]) return null;
+  const g = cloneSkinned(cache[key].scene) as THREE.Group;
+  g.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; }
+  });
+  return g;
+}
+
+function clipFrom(anims: THREE.AnimationClip[], names: string[]): THREE.AnimationClip | null {
+  for (const n of names) {
+    const hit = THREE.AnimationClip.findByName(anims, n) || anims.find((c) => c.name.toLowerCase().includes(n));
+    if (hit) return hit;
+  }
+  return anims[0] || null;
+}
+
 function makeKitMaterial(kit: Kit, yMin: number, yMax: number): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0 });
   m.onBeforeCompile = (sh) => {
@@ -67,7 +106,6 @@ function makeKitMaterial(kit: Kit, yMin: number, yMax: number): THREE.MeshStanda
   return m;
 }
 
-/** Frame-rate-independent damping toward a target angle (shortest way round). */
 function dampAngle(current: number, target: number, lambda: number, dt: number): number {
   let diff = target - current;
   while (diff > Math.PI) diff -= Math.PI * 2;
@@ -75,14 +113,7 @@ function dampAngle(current: number, target: number, lambda: number, dt: number):
   return current + diff * (1 - Math.exp(-lambda * dt));
 }
 
-const clip = (name: string): THREE.AnimationClip => {
-  const clips = GLTF!.animations;
-  return (
-    THREE.AnimationClip.findByName(clips, name) ||
-    clips.find((c) => c.name.toLowerCase().includes(name)) ||
-    clips[0]
-  );
-};
+const RUN_HINTS: Record<string, string[]> = { outfield: ["run"], gk: ["walk", "traverse", "sprint", "run"] };
 
 export class ModelPlayer {
   group = new THREE.Group();
@@ -91,14 +122,13 @@ export class ModelPlayer {
   private idle: THREE.AnimationAction;
   private run: THREE.AnimationAction;
 
-  constructor(kit: Kit) {
-    const model = cloneSkinned(GLTF!.scene) as THREE.Group;
+  constructor(kit: Kit, role: "outfield" | "gk" = "outfield") {
+    const data = cache[role] || cache.player;
+    const model = cloneSkinned(data.scene) as THREE.Group;
 
-    // scale so the player is ~1.6 units tall; widen x/z a touch for a stockier,
-    // more athletic (less slim) build
     const box = new THREE.Box3().setFromObject(model);
     const h = box.max.y - box.min.y || 1;
-    const s = 1.6 / h;
+    const s = (role === "gk" ? 1.7 : 1.6) / h;
     model.scale.set(s * 1.18, s, s * 1.18);
     model.position.y = -box.min.y * s;
 
@@ -114,13 +144,13 @@ export class ModelPlayer {
     this.group.add(model);
 
     this.mixer = new THREE.AnimationMixer(model);
-    this.idle = this.mixer.clipAction(clip("idle"));
-    this.run = this.mixer.clipAction(clip("run"));
+    this.idle = this.mixer.clipAction(clipFrom(data.animations, ["idle"])!);
+    this.run = this.mixer.clipAction(clipFrom(data.animations, RUN_HINTS[role])!);
     this.idle.play();
     this.run.play();
     this.idle.setEffectiveWeight(1);
     this.run.setEffectiveWeight(0);
-    this.mixer.update(Math.random()); // desync animation phases
+    this.mixer.update(Math.random());
 
     this.marker = new THREE.Mesh(
       new THREE.RingGeometry(0.7, 0.95, 28),
@@ -132,27 +162,50 @@ export class ModelPlayer {
     this.group.add(this.marker);
   }
 
-  // kept for interface compatibility (skeletal model has no separate kick clip)
   kick() {}
 
   update(x: number, z: number, faceX: number, faceZ: number, speed: number, active: boolean, dt: number) {
     this.group.position.set(x, 0, z);
-    // smoothly turn to face the movement direction (Mixamo rig faces +z)
-    const targetYaw = Math.atan2(faceX, faceZ);
-    this.group.rotation.y = dampAngle(this.group.rotation.y, targetYaw, 12, dt);
-
+    this.group.rotation.y = dampAngle(this.group.rotation.y, Math.atan2(faceX, faceZ), 12, dt);
     const running = speed > 0.6;
     const rw = THREE.MathUtils.damp(this.run.getEffectiveWeight(), running ? 1 : 0, 10, dt);
     this.run.setEffectiveWeight(rw);
     this.idle.setEffectiveWeight(1 - rw);
     this.run.timeScale = Math.max(0.85, Math.min(speed / 6.5, 1.5));
     this.mixer.update(dt);
-
     this.marker.visible = active;
     if (active) {
       const sc = 1 + Math.sin(performance.now() / 250) * 0.07;
       this.marker.scale.set(sc, sc, sc);
       this.marker.rotation.z += dt * 1.5;
     }
+  }
+}
+
+/** A standing/idling referee prop (only used if a referee.glb slot is filled). */
+export class RefereeView {
+  group = new THREE.Group();
+  private mixer: THREE.AnimationMixer | null = null;
+  constructor() {
+    const data = cache.referee;
+    if (!data) return;
+    const model = cloneSkinned(data.scene) as THREE.Group;
+    const box = new THREE.Box3().setFromObject(model);
+    const h = box.max.y - box.min.y || 1;
+    const s = 1.65 / h;
+    model.scale.setScalar(s);
+    model.position.y = -box.min.y * s;
+    model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = true; });
+    this.group.add(model);
+    this.mixer = new THREE.AnimationMixer(model);
+    const idle = clipFrom(data.animations, ["refidle", "idle"]);
+    if (idle) this.mixer.clipAction(idle).play();
+  }
+  setPos(x: number, z: number, yaw: number) {
+    this.group.position.set(x, 0, z);
+    this.group.rotation.y = yaw;
+  }
+  update(dt: number) {
+    this.mixer?.update(dt);
   }
 }
