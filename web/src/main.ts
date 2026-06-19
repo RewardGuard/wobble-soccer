@@ -253,7 +253,7 @@ function loop(now: number) {
     const ap = cur.activePlayer;
     const px = prev.players[ap].pos[0] + (cur.players[ap].pos[0] - prev.players[ap].pos[0]) * alpha;
     const pz = prev.players[ap].pos[2] + (cur.players[ap].pos[2] - prev.players[ap].pos[2]) * alpha;
-    scene.updateCamera(px * 0.64 + bx * 0.36, pz * 0.64 + bz * 0.36, dt);
+    scene.updateCamera(px * 0.82 + bx * 0.18, pz * 0.82 + bz * 0.18, dt);
     if (matchMode === "playing" && !autoPlay) {
       input.buildAction(cur, scene.camera);
       const ap = cur.players[cur.activePlayer];

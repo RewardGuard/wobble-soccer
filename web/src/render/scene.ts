@@ -265,12 +265,13 @@ export class GameScene {
   }
 
   updateCamera(targetX: number, targetZ: number, dt: number) {
-    const tx = Math.max(-C.HALF_LENGTH * 0.5, Math.min(C.HALF_LENGTH * 0.5, targetX));
-    const tz = Math.max(-C.HALF_WIDTH * 0.4, Math.min(C.HALF_WIDTH * 0.4, targetZ));
-    this.camTarget.lerp(new THREE.Vector3(tx, 0, tz), 1 - Math.pow(0.0015, dt));
-    const desired = new THREE.Vector3(this.camTarget.x - 33, 31, this.camTarget.z);
-    this.camera.position.lerp(desired, 1 - Math.pow(0.0008, dt));
-    this.camera.lookAt(this.camTarget.x + 14, 1.0, this.camTarget.z);
+    // closer, lower chase cam that stays centred on the controlled player
+    const tx = Math.max(-C.HALF_LENGTH * 0.66, Math.min(C.HALF_LENGTH * 0.66, targetX));
+    const tz = Math.max(-C.HALF_WIDTH * 0.6, Math.min(C.HALF_WIDTH * 0.6, targetZ));
+    this.camTarget.lerp(new THREE.Vector3(tx, 0, tz), 1 - Math.pow(0.0009, dt));
+    const desired = new THREE.Vector3(this.camTarget.x - 19, 14, this.camTarget.z);
+    this.camera.position.lerp(desired, 1 - Math.pow(0.0006, dt));
+    this.camera.lookAt(this.camTarget.x + 6, 1.6, this.camTarget.z);
   }
 
   resize() {
